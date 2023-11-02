@@ -5,11 +5,17 @@ import { useState } from "react";
 
 function App() {
 	const [isPlaying, setIsPlaying] = useState(false);
+	const [isVictory, setIsVictory] = useState(false);
+	const [isDefeat, setIsDefeat] = useState(false);
 	const [player, setPlayer] = useState({ isPlayer: true });
 	const [pc, setPc] = useState({ isPlayer: false });
 	const [actionLog, setActionLog] = useState(["Ready!"]);
 	const [critical, setCritical] = useState(false);
 	const [effective, setEffective] = useState(false);
+
+	function logSetter(str) {
+		setActionLog((actionLog) => [...actionLog, str]);
+	}
 
 	function attack() {
 		const playerDamage = calculateDamage(
@@ -19,22 +25,39 @@ function App() {
 			pc.pokemonData.level,
 			pc.pokemonData.life
 		);
+		const playerEffectiveness = calculateEffectiveness(player.pokemonData.type, pc.pokemonData.type);
 		const newPcData = { ...pc.pokemonData, life: playerDamage };
 		const pcNewState = { ...pc, pokemonData: newPcData };
 
 		setPc(pcNewState);
-		setActionLog([
-			`${player.pokemonData.name} has used ${player.pokemonData.moves}, ${
-				effective === true ? "is effective" : "is not effective"
-			}`,
-			...actionLog,
-		]);
+		const playerLog = `${player.pokemonData.name} has used ${player.pokemonData.moves}, ${
+			playerEffectiveness == 3 ? "is effective" : "is not effective"
+		}`;
+		logSetter(playerLog);
+
+		if (pcNewState.pokemonData.life <= 0) setIsVictory(true);
+		setTimeout(() => {
+			const pcDamage = calculateDamage(
+				pc.pokemonData.type,
+				player.pokemonData.type,
+				pc.pokemonData.level,
+				player.pokemonData.level,
+				player.pokemonData.life
+			);
+			const newPlayerData = { ...player.pokemonData, life: pcDamage };
+			const playerNewState = { ...player, pokemonData: newPlayerData };
+			const pcEffectiveness = calculateEffectiveness(pc.pokemonData.type, player.pokemonData.type);
+
+			setPlayer(playerNewState);
+			const pcLog = `${pc.pokemonData.name} has used ${pc.pokemonData.moves}, ${
+				pcEffectiveness == 3 ? "is effective" : "is not effective"
+			}`;
+			logSetter(pcLog);
+			if (playerNewState.pokemonData.life <= 0) setIsDefeat(true);
+		}, 500);
 	}
 
 	function PlayerCard(pokemon) {
-		console.log(pokemon);
-		console.log(Math.round(pokemon.pokemonData.life));
-
 		return (
 			<div className={`card w-1/4 m-2 h-fit bg-transparent shadow-xl shadow-black border-2 border-white`}>
 				<div className="card-body">
@@ -155,22 +178,16 @@ function App() {
 	// FUNCION PARA CALCULAR LA EFECTIVIDAD
 	function calculateEffectiveness(attack, defense) {
 		if (attack === "Water" && defense === "Fire") {
-			setEffective(true);
 			return 3;
 		} else if (attack === "Fire" && defense === "Rock") {
-			setEffective(true);
 			return 3;
 		} else if (attack === "Rock" && defense === "Electric") {
-			setEffective(true);
 			return 3;
 		} else if (attack === "Electric" && defense === "Water") {
-			setEffective(true);
 			return 3;
 		} else if (attack === defense) {
-			setEffective(false);
 			return 1;
 		} else {
-			setEffective(false);
 			return 0.5;
 		}
 	}
@@ -187,7 +204,29 @@ function App() {
 			<div className="hero-overlay bg-opacity-40"></div>
 			<div className="hero-content min-w-full text-center text-neutral-content m-0 p-0">
 				<div className="min-w-full text-white">
-					{!isPlaying ? (
+					{!isPlaying && isVictory && !isDefeat ? (
+						<div className="card w-1/2 bg-black bg-opacity-50 shadow-xl ml-auto mr-auto">
+							<div className="card-body">
+								<h1 className="card-title mb-2 text-5xl font-bold">Victory!</h1>
+								{/* <p>To start a new pokemon battle, press start...</p> */}
+							</div>
+						</div>
+					) : (
+						false
+					)}
+
+					{!isPlaying && isDefeat && !isVictory ? (
+						<div className="card w-1/2 bg-black bg-opacity-50 shadow-xl ml-auto mr-auto">
+							<div className="card-body">
+								<h1 className="card-title mb-2 text-5xl font-bold">Defeat!</h1>
+								{/* <p>To start a new pokemon battle, press start...</p> */}
+							</div>
+						</div>
+					) : (
+						false
+					)}
+
+					{(!isPlaying && !isDefeat) || (!isPlaying && !isVictory) ? (
 						<div className="card w-1/2 bg-black bg-opacity-50 shadow-xl ml-auto mr-auto">
 							<div className="card-body">
 								<h1 className="card-title mb-2 text-5xl font-bold">Pokemon Battle</h1>
@@ -208,13 +247,15 @@ function App() {
 							<div className="border border-white m-2 w-1/4 p-2 rounded-2xl h-full">
 								<h2 className="text-center text-3xl font-bold max-h-full">Battle Log</h2>
 								<div className="overflow-y-scroll max-h-96">
-									{actionLog.map((e) => {
-										return (
-											<p key={[e]} className="m-4 italic">
-												{e}
-											</p>
-										);
-									})}
+									{actionLog
+										.map((e) => {
+											return (
+												<p key={[e]} className="m-4 italic">
+													{e}
+												</p>
+											);
+										})
+										.reverse()}
 								</div>
 							</div>
 							{PlayerCard(pc)}
