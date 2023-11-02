@@ -5,18 +5,12 @@ import { useState } from "react";
 
 function App() {
 	const [isPlaying, setIsPlaying] = useState(false);
-	const [isVictory, setIsVictory] = useState(false);
-	const [isDefeat, setIsDefeat] = useState(false);
+	const [gameOver, setGameOver] = useState(false);
+	const [endCode, setEndCode] = useState(0);
 	const [player, setPlayer] = useState({ isPlayer: true });
 	const [pc, setPc] = useState({ isPlayer: false });
 	const [actionLog, setActionLog] = useState(["Ready!"]);
-	const [critical, setCritical] = useState(false);
-	const [effective, setEffective] = useState(false);
-
-	function logSetter(str) {
-		setActionLog((actionLog) => [...actionLog, str]);
-	}
-
+	const [endMessage, setEndMessage] = useState(undefined);
 	function attack() {
 		const playerDamage = calculateDamage(
 			player.pokemonData.type,
@@ -25,36 +19,54 @@ function App() {
 			pc.pokemonData.level,
 			pc.pokemonData.life
 		);
-		const playerEffectiveness = calculateEffectiveness(player.pokemonData.type, pc.pokemonData.type);
 		const newPcData = { ...pc.pokemonData, life: playerDamage };
 		const pcNewState = { ...pc, pokemonData: newPcData };
+		const playerEffectiveness = calculateEffectiveness(player.pokemonData.type, pc.pokemonData.type);
+		setActionLog((actionLog) => [
+			...actionLog,
+			`${player.pokemonData.name} has used ${player.pokemonData.moves}, ${
+				playerEffectiveness == 3 ? "is effective" : "is not effective"
+			}`,
+		]);
+		// pcNewState.pokemonData.life <= 0 ? alert("Victory!")&&endGame() : false;
+		if (pcNewState.pokemonData.life <= 0) {
+			setEndMessage("Victory!");
+			setEndCode(1);
+			console.log(endCode);
+			return endGame();
+		} else {
+			setPc(pcNewState);
 
-		setPc(pcNewState);
-		const playerLog = `${player.pokemonData.name} has used ${player.pokemonData.moves}, ${
-			playerEffectiveness == 3 ? "is effective" : "is not effective"
-		}`;
-		logSetter(playerLog);
+			setTimeout(() => {
+				const pcDamage = calculateDamage(
+					pc.pokemonData.type,
+					player.pokemonData.type,
+					pc.pokemonData.level,
+					player.pokemonData.level,
+					player.pokemonData.life
+				);
+				const newPlayerData = { ...player.pokemonData, life: pcDamage };
+				const playerNewState = { ...player, pokemonData: newPlayerData };
 
-		if (pcNewState.pokemonData.life <= 0) setIsVictory(true);
-		setTimeout(() => {
-			const pcDamage = calculateDamage(
-				pc.pokemonData.type,
-				player.pokemonData.type,
-				pc.pokemonData.level,
-				player.pokemonData.level,
-				player.pokemonData.life
-			);
-			const newPlayerData = { ...player.pokemonData, life: pcDamage };
-			const playerNewState = { ...player, pokemonData: newPlayerData };
-			const pcEffectiveness = calculateEffectiveness(pc.pokemonData.type, player.pokemonData.type);
+				const pcEffectiveness = calculateEffectiveness(player.pokemonData.type, pc.pokemonData.type);
+				setActionLog((actionLog) => [
+					...actionLog,
+					`${pc.pokemonData.name} has used ${pc.pokemonData.moves}, ${
+						pcEffectiveness == 3 ? "is effective" : "is not effective"
+					}`,
+				]);
+				if (playerNewState.pokemonData.life <= 0) {
+					setEndMessage("Defeat!");
+					setEndCode(2);
+					console.log(endCode);
+					return endGame();
+				} else {
+					setPlayer(playerNewState);
+				}
 
-			setPlayer(playerNewState);
-			const pcLog = `${pc.pokemonData.name} has used ${pc.pokemonData.moves}, ${
-				pcEffectiveness == 3 ? "is effective" : "is not effective"
-			}`;
-			logSetter(pcLog);
-			if (playerNewState.pokemonData.life <= 0) setIsDefeat(true);
-		}, 500);
+				//endGame();
+			}, 500);
+		}
 	}
 
 	function PlayerCard(pokemon) {
@@ -64,7 +76,10 @@ function App() {
 					<h3>{pokemon.isPlayer ? "Player" : "Computer"}</h3>
 					<h1
 						className="text-center text-5xl font-bold"
-						style={{ textDecoration: "underline", textDecorationColor: pokemon.pokemonData.color }}
+						style={{
+							textDecoration: "underline",
+							textDecorationColor: pokemon.pokemonData.color,
+						}}
 					>
 						{pokemon.pokemonData.name}
 					</h1>
@@ -72,7 +87,9 @@ function App() {
 						src={pokemon.pokemonData.image}
 						alt="pokemon image"
 						className="w-60 ml-auto mr-auto"
-						style={{ filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})` }}
+						style={{
+							filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})`,
+						}}
 					/>
 					<div className="text-2xl bg-black bg-opacity-50 rounded-md">
 						<progress
@@ -84,7 +101,7 @@ function App() {
 							}
 							max={`${Math.round(pokemon.pokemonData.maxLife)}`}
 						></progress>
-						<p>{pokemon.pokemonData.life}</p>
+						{/* <p>{Math.round(pokemon.pokemonData.life)}</p> */}
 						<p>
 							Type: <span style={{ color: pokemon.pokemonData.color }}>{pokemon.pokemonData.type}</span>
 						</p>
@@ -94,16 +111,21 @@ function App() {
 						<div className="card-actions justify-between">
 							<button
 								className="btn bg-gray-800 text-white border border-white"
-								style={{ filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})` }}
+								style={{
+									filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})`,
+								}}
+								onClick={retreat}
 							>
-								Retreat...
+								Run...
 							</button>
 							<button
 								className="btn bg-red-800 hover:bg-red-600 hover:text-white text-slate-200 border hover:border-white"
-								style={{ filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})` }}
+								style={{
+									filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})`,
+								}}
 								onClick={attack}
 							>
-								Attack!
+								Fight
 							</button>
 						</div>
 					) : (
@@ -111,16 +133,20 @@ function App() {
 							<button
 								disabled
 								className="btn bg-gray-800 text-white border border-white"
-								style={{ filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})` }}
+								style={{
+									filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})`,
+								}}
 							>
-								Retreat...
+								Run...
 							</button>
 							<button
 								disabled
 								className="btn bg-red-800 hover:bg-red-600 hover:text-white text-slate-200 border hover:border-white"
-								style={{ filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})` }}
+								style={{
+									filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})`,
+								}}
 							>
-								Attack!
+								Fight!
 							</button>
 						</div>
 					)}
@@ -134,8 +160,24 @@ function App() {
 		const pcPok = chooseRandomPokemon();
 
 		setIsPlaying(true);
+		setGameOver(false);
 		setPlayer({ ...player, pokemonData: playerPok });
 		setPc({ ...pc, pokemonData: pcPok });
+	}
+
+	function endGame() {
+		setIsPlaying(false);
+		setGameOver(true);
+		setPlayer({ isPlayer: true });
+		setPc({ isPlayer: false });
+		setActionLog(["Ready!"]);
+	}
+
+	//ABANDONAR PARTIDA
+
+	function retreat() {
+		setEndMessage("Run away safely!");
+		endGame();
 	}
 	//CALCULAR LA VIDA
 	function calculateLife(nivel) {
@@ -148,7 +190,12 @@ function App() {
 		const maxLife = calculateLife(randomLevel);
 		const life = calculateLife(randomLevel);
 
-		return { ...randomPokemon, level: randomLevel, life: life, maxLife: maxLife };
+		return {
+			...randomPokemon,
+			level: randomLevel,
+			life: life,
+			maxLife: maxLife,
+		};
 	}
 
 	// FUNCION PARA CALCULAR EL DAÑO SEGUN TIPO, NIVEL
@@ -158,13 +205,10 @@ function App() {
 			const numeroAleatorio = Math.random();
 			// Ahora, ajusta el número aleatorio para obtener 1, 5 o 10
 			if (numeroAleatorio < 0.33) {
-				setCritical(false);
 				return 1;
 			} else if (numeroAleatorio < 0.66) {
-				setCritical(false);
 				return 2;
 			} else {
-				setCritical(true);
 				return 3;
 			}
 		}
@@ -204,29 +248,7 @@ function App() {
 			<div className="hero-overlay bg-opacity-40"></div>
 			<div className="hero-content min-w-full text-center text-neutral-content m-0 p-0">
 				<div className="min-w-full text-white">
-					{!isPlaying && isVictory && !isDefeat ? (
-						<div className="card w-1/2 bg-black bg-opacity-50 shadow-xl ml-auto mr-auto">
-							<div className="card-body">
-								<h1 className="card-title mb-2 text-5xl font-bold">Victory!</h1>
-								{/* <p>To start a new pokemon battle, press start...</p> */}
-							</div>
-						</div>
-					) : (
-						false
-					)}
-
-					{!isPlaying && isDefeat && !isVictory ? (
-						<div className="card w-1/2 bg-black bg-opacity-50 shadow-xl ml-auto mr-auto">
-							<div className="card-body">
-								<h1 className="card-title mb-2 text-5xl font-bold">Defeat!</h1>
-								{/* <p>To start a new pokemon battle, press start...</p> */}
-							</div>
-						</div>
-					) : (
-						false
-					)}
-
-					{(!isPlaying && !isDefeat) || (!isPlaying && !isVictory) ? (
+					{!isPlaying ? (
 						<div className="card w-1/2 bg-black bg-opacity-50 shadow-xl ml-auto mr-auto">
 							<div className="card-body">
 								<h1 className="card-title mb-2 text-5xl font-bold">Pokemon Battle</h1>
@@ -247,15 +269,13 @@ function App() {
 							<div className="border border-white m-2 w-1/4 p-2 rounded-2xl h-full">
 								<h2 className="text-center text-3xl font-bold max-h-full">Battle Log</h2>
 								<div className="overflow-y-scroll max-h-96">
-									{actionLog
-										.map((e) => {
-											return (
-												<p key={[e]} className="m-4 italic">
-													{e}
-												</p>
-											);
-										})
-										.reverse()}
+									{actionLog.map((e) => {
+										return (
+											<p key={[e]} className="m-4 italic">
+												{e}
+											</p>
+										);
+									})}
 								</div>
 							</div>
 							{PlayerCard(pc)}
