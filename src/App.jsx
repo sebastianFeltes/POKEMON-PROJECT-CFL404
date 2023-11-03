@@ -1,16 +1,28 @@
 import pokbg from "./assets/woodbg.jpg";
 import "./App.css";
 import { pokemonData } from "./data/pokemonData";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import AudioPlayer from "./Audio";
+import punchSound from "./assets/Punch Sound Effect.mp3";
 
 function App() {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [gameOver, setGameOver] = useState(false);
-	const [endCode, setEndCode] = useState(0);
 	const [player, setPlayer] = useState({ isPlayer: true });
 	const [pc, setPc] = useState({ isPlayer: false });
 	const [actionLog, setActionLog] = useState(["Ready!"]);
 	const [endMessage, setEndMessage] = useState(undefined);
+	const [playerWin, setPlayerWin] = useState("retreat");
+	const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+
+	const hitSound = new Audio(punchSound);
+
+	const audioPlayerRef = useRef(null);
+	function playPauseAudio() {
+		audioPlayerRef.current.playPause();
+		setIsMusicPlaying(!isMusicPlaying);
+	}
+
 	function attack() {
 		const playerDamage = calculateDamage(
 			player.pokemonData.type,
@@ -24,15 +36,14 @@ function App() {
 		const playerEffectiveness = calculateEffectiveness(player.pokemonData.type, pc.pokemonData.type);
 		setActionLog((actionLog) => [
 			...actionLog,
-			`${player.pokemonData.name} has used ${player.pokemonData.moves}, ${
+			`${player.pokemonData.name.toUpperCase()} has used ${player.pokemonData.moves.toUpperCase()}, ${
 				playerEffectiveness == 3 ? "is effective" : "is not effective"
 			}`,
 		]);
-		// pcNewState.pokemonData.life <= 0 ? alert("Victory!")&&endGame() : false;
+		hitSound.play();
 		if (pcNewState.pokemonData.life <= 0) {
 			setEndMessage("Victory!");
-			setEndCode(1);
-			console.log(endCode);
+			setPlayerWin("victory");
 			return endGame();
 		} else {
 			setPc(pcNewState);
@@ -51,20 +62,18 @@ function App() {
 				const pcEffectiveness = calculateEffectiveness(player.pokemonData.type, pc.pokemonData.type);
 				setActionLog((actionLog) => [
 					...actionLog,
-					`${pc.pokemonData.name} has used ${pc.pokemonData.moves}, ${
+					`${pc.pokemonData.name.toUpperCase()} has used ${pc.pokemonData.moves.toUpperCase()}, ${
 						pcEffectiveness == 3 ? "is effective" : "is not effective"
 					}`,
 				]);
+				hitSound.play();
 				if (playerNewState.pokemonData.life <= 0) {
 					setEndMessage("Defeat!");
-					setEndCode(2);
-					console.log(endCode);
+					setPlayerWin("defeat");
 					return endGame();
 				} else {
 					setPlayer(playerNewState);
 				}
-
-				//endGame();
 			}, 500);
 		}
 	}
@@ -158,11 +167,14 @@ function App() {
 	function startGame() {
 		const playerPok = chooseRandomPokemon();
 		const pcPok = chooseRandomPokemon();
-
 		setIsPlaying(true);
 		setGameOver(false);
 		setPlayer({ ...player, pokemonData: playerPok });
 		setPc({ ...pc, pokemonData: pcPok });
+
+		if (!isMusicPlaying) {
+			playPauseAudio();
+		}
 	}
 
 	function endGame() {
@@ -246,13 +258,38 @@ function App() {
 			}}
 		>
 			<div className="hero-overlay bg-opacity-40"></div>
+			<AudioPlayer ref={audioPlayerRef} />
 			<div className="hero-content min-w-full text-center text-neutral-content m-0 p-0">
 				<div className="min-w-full text-white">
-					{!isPlaying ? (
+					{!isPlaying && !gameOver ? (
 						<div className="card w-1/2 bg-black bg-opacity-50 shadow-xl ml-auto mr-auto">
 							<div className="card-body">
 								<h1 className="card-title mb-2 text-5xl font-bold">Pokemon Battle</h1>
 								<p>To start a new pokemon battle, press start...</p>
+								<div className="card-actions justify-end">
+									<button
+										onClick={startGame}
+										className="btn bg-blue-800 text-white border border-white hover:bg-blue-300 hover:text-blue-950"
+									>
+										Start!
+									</button>
+								</div>
+							</div>
+						</div>
+					) : !isPlaying && gameOver ? (
+						<div className="card w-1/2 bg-black bg-opacity-50 shadow-xl ml-auto mr-auto">
+							<div className="card-body">
+								<h1
+									className={`card-title-center mb-2 text-5xl font-bold ${
+										playerWin == "victory"
+											? `text-blue-500`
+											: playerWin == "defeat"
+											? `text-red-600`
+											: `text-orange-400`
+									}`}
+								>
+									{endMessage}
+								</h1>
 								<div className="card-actions justify-end">
 									<button
 										onClick={startGame}
@@ -269,13 +306,15 @@ function App() {
 							<div className="border border-white m-2 w-1/4 p-2 rounded-2xl h-full">
 								<h2 className="text-center text-3xl font-bold max-h-full">Battle Log</h2>
 								<div className="overflow-y-scroll max-h-96">
-									{actionLog.map((e) => {
-										return (
-											<p key={[e]} className="m-4 italic">
-												{e}
-											</p>
-										);
-									})}
+									{actionLog
+										.map((e) => {
+											return (
+												<p key={[e]} className="m-4 italic">
+													{e}
+												</p>
+											);
+										})
+										.reverse()}
 								</div>
 							</div>
 							{PlayerCard(pc)}
