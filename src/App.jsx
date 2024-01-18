@@ -6,7 +6,26 @@ import AudioPlayer from "./Audio";
 import punchSound from "./assets/Punch Sound Effect.mp3";
 
 function App() {
+	const [esMovil, setEsMovil] = useState(false);
+
+	useEffect(() => {
+		// Función para verificar si la resolución es menor que 600 (puedes ajustar este valor)
+		const verificarResolucion = () => {
+			setEsMovil(window.innerWidth < 750);
+		};
+
+		// Verificar inicialmente y agregar un listener para cambios en la ventana
+		verificarResolucion();
+		window.addEventListener("resize", verificarResolucion);
+
+		// Limpiar el listener al desmontar el componente
+		return () => {
+			window.removeEventListener("resize", verificarResolucion);
+		};
+	}, []);
+
 	const [isPlaying, setIsPlaying] = useState(false);
+	const [getHitted, setGetHitted] = useState(undefined);
 	const [gameOver, setGameOver] = useState(false);
 	const [player, setPlayer] = useState({ isPlayer: true });
 	const [pc, setPc] = useState({ isPlayer: false });
@@ -34,13 +53,22 @@ function App() {
 		const newPcData = { ...pc.pokemonData, life: playerDamage };
 		const pcNewState = { ...pc, pokemonData: newPcData };
 		const playerEffectiveness = calculateEffectiveness(player.pokemonData.type, pc.pokemonData.type);
+
 		setActionLog((actionLog) => [
 			...actionLog,
-			`${player.pokemonData.name.toUpperCase()} has used ${player.pokemonData.moves.toUpperCase()}, ${
-				playerEffectiveness == 3 ? "is effective" : "is not effective"
-			}`,
+			`${player.pokemonData.name.toUpperCase()} has used ${player.pokemonData.moves.toUpperCase()} causing ${Math.round(
+				pc.pokemonData.life - playerDamage
+			)} of damage`,
 		]);
+
+		const pcImg = document.getElementById("pokemonImagePc");
+		hitSound.volume = 0.5;
 		hitSound.play();
+		pcImg.classList.add("pokemon-hitted");
+		setTimeout(() => {
+			pcImg.classList.remove("pokemon-hitted");
+		}, 600);
+
 		if (pcNewState.pokemonData.life <= 0) {
 			setEndMessage("Victory!");
 			setPlayerWin("victory");
@@ -60,13 +88,20 @@ function App() {
 				const playerNewState = { ...player, pokemonData: newPlayerData };
 
 				const pcEffectiveness = calculateEffectiveness(player.pokemonData.type, pc.pokemonData.type);
+				hitSound.volume = 0.5;
+				hitSound.play();
 				setActionLog((actionLog) => [
 					...actionLog,
-					`${pc.pokemonData.name.toUpperCase()} has used ${pc.pokemonData.moves.toUpperCase()}, ${
-						pcEffectiveness == 3 ? "is effective" : "is not effective"
-					}`,
+					`${pc.pokemonData.name.toUpperCase()} has used ${pc.pokemonData.moves.toUpperCase()} causing ${Math.round(
+						player.pokemonData.life - pcDamage
+					)} of damage`,
 				]);
-				hitSound.play();
+
+				const pcImg = document.getElementById("pokemonImagePl");
+				pcImg.classList.add("pokemon-hitted");
+				setTimeout(() => {
+					pcImg.classList.remove("pokemon-hitted");
+				}, 600);
 				if (playerNewState.pokemonData.life <= 0) {
 					setEndMessage("Defeat!");
 					setPlayerWin("defeat");
@@ -80,11 +115,16 @@ function App() {
 
 	function PlayerCard(pokemon) {
 		return (
-			<div className={`card w-1/4 m-2 h-fit bg-transparent shadow-xl shadow-black border-2 border-white`}>
+			<div
+				className={`card w-1/3 m-2 h-fit bg-transparent shadow-xl shadow-black`}
+				style={{
+					border: "2px solid " + pokemon.pokemonData.color,
+				}}
+			>
 				<div className="card-body">
 					<h3>{pokemon.isPlayer ? "Player" : "Computer"}</h3>
 					<h1
-						className="text-center text-5xl font-bold"
+						className="text-center text-3xl font-bold"
 						style={{
 							textDecoration: "underline",
 							textDecorationColor: pokemon.pokemonData.color,
@@ -93,23 +133,36 @@ function App() {
 						{pokemon.pokemonData.name}
 					</h1>
 					<img
+						id={"pokemonImage" + `${pokemon.isPlayer ? "Pl" : "Pc"}`}
 						src={pokemon.pokemonData.image}
 						alt="pokemon image"
-						className="w-60 ml-auto mr-auto"
+						className={"w-60 ml-auto mr-auto "}
 						style={{
 							filter: `drop-shadow(0px 0px 20px ${pokemon.pokemonData.color})`,
 						}}
 					/>
-					<div className="text-2xl bg-black bg-opacity-50 rounded-md">
-						<progress
-							className="progress progress-success w-56 border border-white"
-							value={
-								Math.round(pokemon.pokemonData.life) >= 0
-									? `${Math.round(pokemon.pokemonData.life)}`
-									: "0"
-							}
-							max={`${Math.round(pokemon.pokemonData.maxLife)}`}
-						></progress>
+					<div className="text-2xl bg-black bg-opacity-50 rounded-md p-2">
+						<div className="text-xl">
+							HP: {Math.round(pokemon.pokemonData.life)}
+							<progress
+								className={
+									pokemon.pokemonData.life >= 2 * (pokemon.pokemonData.maxLife / 3)
+										? `progress progress-success w-full h-4`
+										: pokemon.pokemonData.life <= 2 * (pokemon.pokemonData.maxLife / 3) &&
+										  pokemon.pokemonData.life >= pokemon.pokemonData.maxLife / 3
+										? `progress progress-warning w-full h-4`
+										: pokemon.pokemonData.life <= pokemon.pokemonData.maxLife / 3
+										? `progress progress-error w-full h-4`
+										: ``
+								}
+								value={
+									Math.round(pokemon.pokemonData.life) >= 0
+										? `${Math.round(pokemon.pokemonData.life)}`
+										: "0"
+								}
+								max={`${Math.round(pokemon.pokemonData.maxLife)}`}
+							></progress>
+						</div>
 						{/* <p>{Math.round(pokemon.pokemonData.life)}</p> */}
 						<p>
 							Type: <span style={{ color: pokemon.pokemonData.color }}>{pokemon.pokemonData.type}</span>
@@ -134,7 +187,7 @@ function App() {
 								}}
 								onClick={attack}
 							>
-								Fight
+								Attack!
 							</button>
 						</div>
 					) : (
@@ -248,7 +301,7 @@ function App() {
 		}
 	}
 
-	return (
+	return !esMovil ? (
 		<div
 			className="hero min-h-screen w-full bg-white m-0 p-0"
 			style={{
@@ -305,12 +358,24 @@ function App() {
 							{PlayerCard(player)}
 							<div className="border border-white m-2 w-1/4 p-2 rounded-2xl h-full">
 								<h2 className="text-center text-3xl font-bold max-h-full">Battle Log</h2>
-								<div className="overflow-y-scroll max-h-96">
+								<div className="overflow-y-scroll h-96">
 									{actionLog
-										.map((e) => {
+										.map((e, index) => {
 											return (
-												<p key={[e]} className="m-4 italic">
-													{e}
+												<p
+													key={index}
+													className={`mx-4 p-2 italic border-b text-white font-semibold bg-black bg-opacity-30 rounded-lg`}
+												>
+													<span
+														className={
+															index % 2 == 0
+																? "underline decoration-orange-700"
+																: "underline decoration-blue-700"
+														}
+													>
+														{index % 2 == 0 ? "Computer" : "Player"}
+													</span>
+													: {e}
 												</p>
 											);
 										})
@@ -321,6 +386,22 @@ function App() {
 						</div>
 					)}
 				</div>
+			</div>
+		</div>
+	) : (
+		<div
+			className="hero h-screen w-screen bg-white"
+			style={{
+				backgroundImage: `url(${pokbg})`,
+				backgroundSize: "cover",
+				backgroundRepeat: "no-repeat",
+			}}
+		>
+			<div className="bg-white bg-opacity-40 w-full h-full flex flex-col justify-center">
+				<p className="text-2xl text-center m-4 font-mono">LO SENTIMOS :/</p>
+				<p className="text-xl text-center m-4 font-mono">
+					PERO ESTE JUEGO NO SE PUEDE JUGAR DESDE UN DISPOSITIVO CON UN ANCHO DE PANTALLA MENOR A 750
+				</p>
 			</div>
 		</div>
 	);

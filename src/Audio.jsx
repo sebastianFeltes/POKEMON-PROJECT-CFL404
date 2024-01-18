@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
 import pokemonAudio from "./assets/Pokemon Red, Yellow, Blue Battle Music- Trainer.mp3";
+import playIco from "./assets/play-button.png";
+import stopIco from "./assets/stop.png";
+import pauseIco from "./assets/pause.png";
+import volumeIco from "./assets/medium-volume.png";
 
 const AudioPlayer = React.forwardRef((props, ref) => {
 	const [audio] = useState(new Audio(pokemonAudio));
-	const [volume, setVolume] = useState(1);
+	const [volume, setVolume] = useState(0.5);
 	const [isPaused, setIsPaused] = useState(true);
 
 	// Use useEffect to update the audio volume when the prop changes
@@ -42,27 +46,31 @@ const AudioPlayer = React.forwardRef((props, ref) => {
 
 	return (
 		<div className="dropdown dropdown-hover absolute top-0 left-0 z-50 ">
-			<label tabIndex={0} className="btn bg-opacity-60 bg-base-100">
-				Music Controller
+			<label tabIndex={0} className="btn bg-opacity-10 bg-base-100">
+				Music
 			</label>
 			<ul
 				tabIndex={0}
-				className="dropdown-content z-[1] menu p-2 shadow  rounded-box w-52 bg-opacity-60 bg-base-100"
+				className="dropdown-content z-[1] menu p-2 shadow rounded-box w-52 bg-opacity-80 bg-base-100"
 			>
-				<li>
+				<li className="flex flex-row justify-between">
 					<button className="btn btn-info btn-outline w-16 m-1" onClick={playPauseAudio}>
-						{isPaused ? "Play" : "Pause"}
+						{isPaused ? (
+							<img className="w-16" src={playIco} alt="" />
+						) : (
+							<img className="w-16" src={pauseIco} alt="" />
+						)}
 					</button>
 					<button className="btn btn-outline btn-error w-16 m-1" onClick={stopAudio}>
-						Stop
+						<img className="w-16" src={stopIco} alt="" />
 					</button>
 				</li>
 
 				<li>
-					<span className="flex flex-col justify-center items-center">
-						<label>Volumen:</label>
+					<div className="flex flex-row justify-center items-center">
+						<img src={volumeIco} className="w-8" alt="" />
 						<input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} />
-					</span>
+					</div>
 				</li>
 			</ul>
 		</div>
